@@ -26,7 +26,24 @@ func main() {
 
 func handleConn(conn net.Conn) {
 	defer conn.Close()
-	conn.Write([]byte("HTTP/1.1 200 OK\r\n\r\n"))
+
+	buffer := make([]byte, 1024)
+
+	_, err := conn.Read(buffer)
+	if err != nil {
+		writeToConn(conn, "400 bad", "", "")
+		return
+	}
+
+	request := newResquest(buffer)
+
+	switch request.target {
+	case "/":
+		writeToConn(conn, "200 OK", "", "")
+	default:
+		writeToConn(conn, "404 Not Found", "", "")
+	}
+
 }
 
 func writeToConn(conn net.Conn, statusCode, header, body string) {
