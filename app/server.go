@@ -60,7 +60,8 @@ func handleConn(conn net.Conn) {
 
 	}
 
-	if strings.HasPrefix(request.target, "/files/") {
+	if strings.HasPrefix(request.target, "/files/") && request.method == "GET" {
+		fmt.Println(request.method)
 		path := strings.Split(request.target, "/")
 		pathParam := strings.TrimSpace(path[len(path)-1])
 
@@ -77,6 +78,26 @@ func handleConn(conn net.Conn) {
 
 		header := fmt.Sprintf("Content-Type: application/octet-stream\r\nContent-Length: %d\r\n", n)
 		writeToConn(conn, "200 OK", header, string(fileContent))
+		return
+	}
+
+	if strings.HasPrefix(request.target, "/files/") && request.method == "POST" {
+		path := strings.Split(request.target, "/")
+		fileName := path[len(path)-1]
+
+		file, err := os.Create(os.Args[2] + fileName)
+		if err != nil {
+			writeToConn(conn, "400 Bad Request", "", "")
+			return
+		}
+
+		_, err = file.Write(request.body)
+		if err != nil {
+			writeToConn(conn, "400 Bad Request", "", "")
+			return
+		}
+
+		writeToConn(conn, "201 Created", "", "")
 		return
 	}
 

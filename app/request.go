@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"strconv"
 	"strings"
 )
 
@@ -9,6 +10,7 @@ type Request struct {
 	method string
 	target string
 	header map[string]string
+	body   []byte
 }
 
 func newResquest(byteArray []byte) *Request {
@@ -33,6 +35,14 @@ func newResquest(byteArray []byte) *Request {
 		hArray := strings.Split(h, ":")
 		r.header[strings.TrimSpace(hArray[0])] = strings.TrimSpace(hArray[1])
 	}
+
+	buffer.Reset()
+	l, _ := strconv.Atoi(r.header["Content-Length"])
+	for i := 0; i < l; i++ {
+		b, _ := reader.ReadByte()
+		buffer.WriteByte(b)
+	}
+	r.body = buffer.Bytes()
 
 	return &r
 }
