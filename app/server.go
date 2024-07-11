@@ -105,8 +105,13 @@ func handleConn(conn net.Conn) {
 }
 
 func writeToConn(conn net.Conn, request *Request, statusCode, header, body string) {
-	if request.header["Accept-Encoding"] == "gzip" {
-		header += "Content-Encoding: gzip\r\n"
+	if request.header["Accept-Encoding"] != "" {
+		headers := strings.Split(request.header["Accept-Encoding"], ",")
+		for _, h := range headers {
+			if strings.TrimSpace(h) == "gzip" {
+				header += "Content-Encoding: gzip\r\n"
+			}
+		}
 	}
 	res := fmt.Sprintf("HTTP/1.1 %s\r\n%s\r\n%s", statusCode, header, body)
 	conn.Write([]byte(res))
