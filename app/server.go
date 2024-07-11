@@ -32,14 +32,14 @@ func handleConn(conn net.Conn) {
 
 	_, err := conn.Read(buffer)
 	if err != nil {
-		writeToConn(conn, nil, "400 bad", "", "")
+		writeToConn(conn, nil, "400 bad", "", nil)
 		return
 	}
 
 	request := newResquest(buffer)
 
 	if request.target == "/" {
-		writeToConn(conn, request, "200 OK", "", "")
+		writeToConn(conn, request, "200 OK", "", nil)
 		return
 
 	}
@@ -47,15 +47,23 @@ func handleConn(conn net.Conn) {
 	if strings.HasPrefix(request.target, "/echo/") {
 		path := strings.Split(request.target, "/")
 		pathParam := path[len(path)-1]
-		header := fmt.Sprintf("Content-Type: text/plain\r\nContent-Length: %d\r\n", len(pathParam))
-		writeToConn(conn, request, "200 OK", header, pathParam)
+		body := []byte(pathParam)
+		if doesAcceptGzip(request) {
+			body = compress(body)
+		}
+		header := fmt.Sprintf("Content-Type: text/plain\r\nContent-Length: %d\r\n", len(body))
+		writeToConn(conn, request, "200 OK", header, body)
 		return
 	}
 
 	if request.target == "/user-agent" {
 		userAgent := request.header["User-Agent"]
-		header := fmt.Sprintf("Content-Type: text/plain\r\nContent-Length: %d\r\n", len(userAgent))
-		writeToConn(conn, request, "200 OK", header, userAgent)
+		body := []byte(userAgent)
+		if doesAcceptGzip(request) {
+			body = compress(body)
+		}
+		header := fmt.Sprintf("Content-Type: text/plain\r\nContent-Length: %d\r\n", len(body))
+		writeToConn(conn, request, "200 OK", header, body)
 		return
 
 	}
@@ -69,15 +77,18 @@ func handleConn(conn net.Conn) {
 		if err != nil {
 			fmt.Println(err)
 			header := "Content-Type: application/octet-stream\r\n"
-			writeToConn(conn, request, "404 Not Found", header, "")
+			writeToConn(conn, request, "404 Not Found", header, nil)
 			return
 		}
 		fileContent := make([]byte, 1024)
 		n, _ := file.Read(fileContent)
 		fileContent = fileContent[:n]
+		if doesAcceptGzip(request) {
+			fileContent = compress(fileContent)
+		}
 
-		header := fmt.Sprintf("Content-Type: application/octet-stream\r\nContent-Length: %d\r\n", n)
-		writeToConn(conn, request, "200 OK", header, string(fileContent))
+		header := fmt.Sprintf("Content-Type: application/octet-stream\r\nContent-Length: %d\r\n", len(fileContent))
+		writeToConn(conn, request, "200 OK", header, fileContent)
 		return
 	}
 
@@ -87,32 +98,29 @@ func handleConn(conn net.Conn) {
 
 		file, err := os.Create(os.Args[2] + fileName)
 		if err != nil {
-			writeToConn(conn, request, "400 Bad Request", "", "")
+			writeToConn(conn, request, "400 Bad Request", "", nil)
 			return
 		}
 
 		_, err = file.Write(request.body)
 		if err != nil {
-			writeToConn(conn, request, "400 Bad Request", "", "")
+			writeToConn(conn, request, "400 Bad Request", "", nil)
 			return
 		}
 
-		writeToConn(conn, request, "201 Created", "", "")
+		writeToConn(conn, request, "201 Created", "", nil)
 		return
 	}
 
-	writeToConn(conn, request, "404 Not Found", "", "")
+	writeToConn(conn, request, "404 Not Found", "", nil)
 }
 
-func writeToConn(conn net.Conn, request *Request, statusCode, header, body string) {
-	if request.header["Accept-Encoding"] != "" {
-		headers := strings.Split(request.header["Accept-Encoding"], ",")
-		for _, h := range headers {
-			if strings.TrimSpace(h) == "gzip" {
-				header += "Content-Encoding: gzip\r\n"
-			}
-		}
+func writeToConn(conn net.Conn, request *Request, statusCode, header string, body []byte) {
+	if doesAcceptGzip(request) {
+		header += "Content-Encoding: gzip\r\n"
 	}
-	res := fmt.Sprintf("HTTP/1.1 %s\r\n%s\r\n%s", statusCode, header, body)
-	conn.Write([]byte(res))
+	res := fmt.Sprintf("HTTP/1.1 %s\r\n%s\r\n", statusCode, header)
+	resByte := []byte(res)
+	resByte = append(resByte, body...)
+	conn.Write(resByte)
 }
