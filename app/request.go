@@ -20,8 +20,25 @@ func newResquest(byteArray []byte) *Request {
 	rlArray := strings.Split(buffer.String(), " ")
 	r.method = rlArray[0]
 	r.target = rlArray[1]
+	r.header = make(map[string]string)
+
+	for {
+		buffer.Reset()
+		readline(reader, &buffer)
+		h := buffer.String()
+		if h == "" {
+			break
+		}
+
+		hArray := strings.Split(h, ":")
+		r.header[strings.TrimSpace(hArray[0])] = strings.TrimSpace(hArray[1])
+	}
 
 	return &r
+}
+
+func setHeader(reader *bytes.Reader, request *Request) {
+
 }
 
 func readline(reader *bytes.Reader, buffer *bytes.Buffer) {

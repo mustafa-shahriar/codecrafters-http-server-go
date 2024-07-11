@@ -52,6 +52,14 @@ func handleConn(conn net.Conn) {
 		return
 	}
 
+	if request.target == "/user-agent" {
+		userAgent := request.header["User-Agent"]
+		header := fmt.Sprintf("Content-Type: text/plain\r\nContent-Length: %d\r\n", len(userAgent))
+		writeToConn(conn, "200 OK", header, userAgent)
+		return
+
+	}
+
 	writeToConn(conn, "404 Not Found", "", "")
 }
 
