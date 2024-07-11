@@ -1,17 +1,13 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"net"
 	"os"
 	"strings"
 )
 
-var fileDir *string
-
 func main() {
-	fileDir = flag.String("directory", "/tmp/", "")
 	l, err := net.Listen("tcp", "0.0.0.0:4221")
 	defer l.Close()
 	if err != nil {
@@ -66,10 +62,11 @@ func handleConn(conn net.Conn) {
 
 	if strings.HasPrefix(request.target, "/files/") {
 		path := strings.Split(request.target, "/")
-		pathParam := path[len(path)-1]
+		pathParam := strings.TrimSpace(path[len(path)-1])
 
-		file, err := os.Open(*fileDir + "/" + pathParam)
+		file, err := os.Open(os.Args[2] + pathParam)
 		if err != nil {
+			fmt.Println(err)
 			header := "Content-Type: application/octet-stream\r\n"
 			writeToConn(conn, "404 Not Found", header, "")
 			return
