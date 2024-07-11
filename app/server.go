@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strings"
 )
 
 func main() {
@@ -37,13 +38,21 @@ func handleConn(conn net.Conn) {
 
 	request := newResquest(buffer)
 
-	switch request.target {
-	case "/":
+	if request.target == "/" {
 		writeToConn(conn, "200 OK", "", "")
-	default:
-		writeToConn(conn, "404 Not Found", "", "")
+		return
+
 	}
 
+	if strings.HasPrefix(request.target, "/echo/") {
+		path := strings.Split(request.target, "/")
+		pathParam := path[len(path)-1]
+		header := fmt.Sprintf("Content-Type: text/plain\r\nContent-Length: %d\r\n", len(pathParam))
+		writeToConn(conn, "200 OK", header, pathParam)
+		return
+	}
+
+	writeToConn(conn, "404 Not Found", "", "")
 }
 
 func writeToConn(conn net.Conn, statusCode, header, body string) {
