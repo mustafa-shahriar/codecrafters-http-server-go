@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -48,10 +49,7 @@ func handleConn(conn net.Conn) {
 		path := strings.Split(request.target, "/")
 		pathParam := path[len(path)-1]
 		body := []byte(pathParam)
-		if doesAcceptGzip(request) {
-			body = compress(body)
-		}
-		header := fmt.Sprintf("Content-Type: text/plain\r\nContent-Length: %d\r\n", len(body))
+		header := fmt.Sprintf("Content-Type: text/plain\r\n")
 		writeToConn(conn, request, "200 OK", header, body)
 		return
 	}
@@ -59,17 +57,13 @@ func handleConn(conn net.Conn) {
 	if request.target == "/user-agent" {
 		userAgent := request.header["User-Agent"]
 		body := []byte(userAgent)
-		if doesAcceptGzip(request) {
-			body = compress(body)
-		}
-		header := fmt.Sprintf("Content-Type: text/plain\r\nContent-Length: %d\r\n", len(body))
+		header := fmt.Sprintf("Content-Type: text/plain\r\n")
 		writeToConn(conn, request, "200 OK", header, body)
 		return
 
 	}
 
 	if strings.HasPrefix(request.target, "/files/") && request.method == "GET" {
-		fmt.Println(request.method)
 		path := strings.Split(request.target, "/")
 		pathParam := strings.TrimSpace(path[len(path)-1])
 
@@ -83,11 +77,8 @@ func handleConn(conn net.Conn) {
 		fileContent := make([]byte, 1024)
 		n, _ := file.Read(fileContent)
 		fileContent = fileContent[:n]
-		if doesAcceptGzip(request) {
-			fileContent = compress(fileContent)
-		}
 
-		header := fmt.Sprintf("Content-Type: application/octet-stream\r\nContent-Length: %d\r\n", len(fileContent))
+		header := fmt.Sprintf("Content-Type: application/octet-stream\r\n")
 		writeToConn(conn, request, "200 OK", header, fileContent)
 		return
 	}
@@ -118,7 +109,9 @@ func handleConn(conn net.Conn) {
 func writeToConn(conn net.Conn, request *Request, statusCode, header string, body []byte) {
 	if doesAcceptGzip(request) {
 		header += "Content-Encoding: gzip\r\n"
+		body = compress(body)
 	}
+	header += "Content-Length: " + strconv.Itoa(len(body)) + "\r\n"
 	res := fmt.Sprintf("HTTP/1.1 %s\r\n%s\r\n", statusCode, header)
 	resByte := []byte(res)
 	resByte = append(resByte, body...)
