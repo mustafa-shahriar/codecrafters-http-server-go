@@ -47,10 +47,6 @@ func newResquest(byteArray []byte) *Request {
 	return &r
 }
 
-func setHeader(reader *bytes.Reader, request *Request) {
-
-}
-
 func readline(reader *bytes.Reader, buffer *bytes.Buffer) {
 	for {
 		b, _ := reader.ReadByte()
