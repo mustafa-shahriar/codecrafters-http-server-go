@@ -16,12 +16,20 @@ func main() {
 
 	for {
 		conn, err := l.Accept()
-		defer conn.Close()
 		if err != nil {
-			fmt.Println("Failed to bind to port 4221")
-			os.Exit(1)
+			continue
 		}
-		conn.Write([]byte("hello wolrd"))
+		go handleConn(conn)
 	}
 
+}
+
+func handleConn(conn net.Conn) {
+	defer conn.Close()
+	conn.Write([]byte("HTTP/1.1 200 OK\r\n\r\n"))
+}
+
+func writeToConn(conn net.Conn, statusCode, header, body string) {
+	res := fmt.Sprintf("HTTP/1.1 %s\r\n%s\r\n%s", statusCode, header, body)
+	conn.Write([]byte(res))
 }
