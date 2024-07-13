@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"strconv"
 	"strings"
 )
 
@@ -111,7 +110,7 @@ func writeToConn(conn net.Conn, request *Request, statusCode, header string, bod
 		header += "Content-Encoding: gzip\r\n"
 		body = compress(body)
 	}
-	header += "Content-Length: " + strconv.Itoa(len(body)) + "\r\n"
+	header += fmt.Sprintf("Content-Length: %d\r\n", len(body))
 	res := fmt.Sprintf("HTTP/1.1 %s\r\n%s\r\n", statusCode, header)
 	resByte := []byte(res)
 	resByte = append(resByte, body...)
